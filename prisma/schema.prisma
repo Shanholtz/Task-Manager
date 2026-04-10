@@ -25,11 +25,11 @@ enum Priority{
   HIGH
 }
 
-model Task {
+model Tasks {
   id          Int      @id @default(autoincrement())
   title       String
   status      Status   @default(TODO)
-  user_id     Int
+  user_id     String   @db.Uuid
   createdAt   DateTime @default(now())
   due_date    DateTime 
   priority    Priority
