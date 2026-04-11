@@ -10,56 +10,82 @@ export default function TaskBoard() {
   const [draggedTask, setDraggedTask] = useState(null);
   const [editingDate, setEditingDate] = useState(null);
   const [tempDate, setTempDate] = useState("");
+  const [editingPriority, setEditingPriority] = useState(null);
 
   useEffect(() => {
-    loadTasks()
-  }, [])
+  async function initAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
 
-  async function loadTasks() {
-    const { data, error } = await supabase.from('Tasks').select('*')
-    if (!error) setTasks(data)
+    if (!session) {
+      await supabase.auth.signInAnonymously();
+    }
   }
 
-  async function addTask() {
-    const { error } = await supabase.from("Tasks").insert({
-      title,
-      status: "TODO",
-      user_id: crypto.randomUUID(),
-      due_date: new Date().toISOString(),
-      priority: "NORMAL"
-    });
+  initAuth();
+}, []);
 
-    if (error) {
-      console.error("Insert error:", error);
+  useEffect(() => {
+    async function loadTasks() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data, error } = await supabase
+        .from("Tasks")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (!error) setTasks(data);
+    }
+
+      loadTasks();
+    }, []);
+
+  async function addTask() {
+    const { data: { user } } = await supabase.auth.getUser();
+    const today = new Date().toISOString().split("T")[0];
+
+    if (!user) {
+      console.error("No user session found");
       return;
     }
 
+    const { data, error } = await supabase
+      .from("Tasks")
+      .insert({
+        title,
+        status: "TODO",
+        priority: "NORMAL",
+        due_date: today,
+        user_id: user.id
+      })
+      .select();
+
+    if (!error) {
+      setTasks(prev => [...prev, data[0]]);
+      setTitle("");
+    }
+
     setTitle('')
-    loadTasks()
   }
 
   async function updateTaskStatus(taskId, newStatus) {
-  console.log("Attempting update:", { taskId, newStatus });
 
-  const { data, error } = await supabase
-    .from("Tasks")
-    .update({ status: newStatus })
-    .eq("id", taskId)
-    .select();
-
-  console.log("Supabase response:", { data, error });
-  }
+    const { data, error } = await supabase
+      .from("Tasks")
+      .update({ status: newStatus })
+      .eq("id", taskId)
+      .select();
+    }
 
   async function deleteTask(taskId) {
-  const { error } = await supabase
-    .from("Tasks")
-    .delete()
-    .eq("id", taskId);
+    const { error } = await supabase
+      .from("Tasks")
+      .delete()
+      .eq("id", taskId);
 
-  if (error) {
-    console.error("Delete error:", error);
-    return;
-  }
+    if (error) {
+      console.error("Delete error:", error);
+      return;
+    }
 
   // Update UI
   setTasks(prev => prev.filter(t => t.id !== taskId));
@@ -79,6 +105,23 @@ export default function TaskBoard() {
       );
     }
     setEditingDate(null);
+  }
+
+  async function updatePriority(taskId, newPriority) {
+    const { error } = await supabase
+      .from("Tasks")
+      .update({ priority: newPriority })
+      .eq("id", taskId);
+
+    if (!error) {
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId ? { ...t, priority: newPriority } : t
+        )
+      );
+    }
+
+    setEditingPriority(null);
   }
 
   function handleDragStart(task) {
@@ -150,19 +193,37 @@ export default function TaskBoard() {
                     ✕
                   </button></div>
 
-                  
-
-
                   <div className="task-meta">
-                    <span className={`priority-badge priority-${task.priority}`}>
+                    <span
+                      className={`priority-badge priority-${task.priority}`}
+                      onClick={() => setEditingPriority(task.id)}
+                      style={{ cursor: "pointer" }}
+                    >
                       {task.priority}
                     </span>
 
+                    {editingPriority === task.id && (
+                      <div className="priority-dropdown">
+                        {["LOW", "NORMAL", "HIGH"].map((p) => (
+                          <div
+                            key={p}
+                            className="priority-option"
+                            onClick={() => updatePriority(task.id, p)}
+                          >
+                            {p}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="task-date">
-                      <span>{task.due_date}</span> 
+                      <span>{task.due_date
+                            ? new Date(task.due_date + "T00:00:00").toLocaleDateString()
+                             : "No date"}</span>
+                    
                     <button
                       className="date-btn"
-                      onClick={() => {
+                      onClick={() => {  
                       setEditingDate(task);
                       setTempDate(task.due_date.split("T")[0]);
                       }}>

@@ -216,6 +216,7 @@
   cursor: grab;
   box-shadow: 0 2px 4px rgba(170, 18, 18, 0.664);
   transition: box-shadow 0.2s, transform 0.1s;
+  position: relative;
 }
 
 .task-card:hover {
@@ -267,6 +268,29 @@
 .priority-HIGH {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.priority-dropdown {
+  position: absolute;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  margin-top: 4px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.priority-option {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.priority-option:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 #center {
